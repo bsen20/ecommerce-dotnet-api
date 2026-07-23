@@ -10,7 +10,7 @@ using ProductService.Queries;
 
 namespace ProductService.Controllers;
 
-/*
+
 [ApiController]
 [Route("api/[controller]")]
 public class ProductsController : ControllerBase
@@ -98,8 +98,9 @@ public class ProductsController : ControllerBase
 
         return Ok(grouped);
     }
-}*/
+}
 
+/*
 [ApiController]
 [Route("api/[controller]")]
 public class ProductsController : ControllerBase
@@ -126,4 +127,4 @@ public class ProductsController : ControllerBase
         var product = await _mediator.Send(command);
         return CreatedAtAction(nameof(GetAll), new { id = product.Id }, product);
     }
-}
+}*/
