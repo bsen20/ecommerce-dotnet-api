@@ -3,9 +3,14 @@ using Microsoft.EntityFrameworkCore;
 using ProductService.Data;
 using ProductService.Models;
 using ProductService.Repositories;
+using MediatR;
+using ProductService.Dtos;
+using ProductService.Commands;
+using ProductService.Queries;
 
 namespace ProductService.Controllers;
 
+/*
 [ApiController]
 [Route("api/[controller]")]
 public class ProductsController : ControllerBase
@@ -59,38 +64,66 @@ public class ProductsController : ControllerBase
     }
 
     [HttpGet("search")]
-public async Task<ActionResult<List<Product>>> Search(
-    [FromQuery] string? name,
-    [FromQuery] string? category,
-    [FromQuery] decimal? minPrice,
-    [FromQuery] decimal? maxPrice)
+    public async Task<ActionResult<List<Product>>> Search(
+        [FromQuery] string? name,
+        [FromQuery] string? category,
+        [FromQuery] decimal? minPrice,
+        [FromQuery] decimal? maxPrice)
+    {
+        var query = _context.Products.AsQueryable();
+
+        if (!string.IsNullOrEmpty(name))
+            query = query.Where(p => p.Name.ToLower().Contains(name.ToLower()));
+
+        if (!string.IsNullOrEmpty(category))
+            query = query.Where(p => p.Category == category);
+
+        if (minPrice.HasValue)
+            query = query.Where(p => p.Price >= minPrice.Value);
+
+        if (maxPrice.HasValue)
+            query = query.Where(p => p.Price <= maxPrice.Value);
+
+        var products = await query.OrderBy(p => p.Name).ToListAsync();
+        return Ok(products);
+    }
+
+    [HttpGet("grouped")]
+    public async Task<ActionResult> GetGrouped()
+    {
+        var grouped = await _context.Products
+            .GroupBy(p => p.Category)
+            .Select(g => new { Category = g.Key, Count = g.Count(), TotalValue = g.Sum(p => p.Price) })
+            .ToListAsync();
+
+        return Ok(grouped);
+    }
+}*/
+
+[ApiController]
+[Route("api/[controller]")]
+public class ProductsController : ControllerBase
 {
-    var query = _context.Products.AsQueryable();
+    private readonly IMediator _mediator;
 
-    if (!string.IsNullOrEmpty(name))
-        query = query.Where(p => p.Name.ToLower().Contains(name.ToLower()));
+    public ProductsController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
 
-    if (!string.IsNullOrEmpty(category))
-        query = query.Where(p => p.Category == category);
+    [HttpGet]
+    public async Task<ActionResult<List<ProductDto>>> GetAll()
+    {
+        var query = new GetProductsQuery();
+        var products = await _mediator.Send(query);
+        return Ok(products);
+    }
 
-    if (minPrice.HasValue)
-        query = query.Where(p => p.Price >= minPrice.Value);
-
-    if (maxPrice.HasValue)
-        query = query.Where(p => p.Price <= maxPrice.Value);
-
-    var products = await query.OrderBy(p => p.Name).ToListAsync();
-    return Ok(products);
-}
-
-[HttpGet("grouped")]
-public async Task<ActionResult> GetGrouped()
-{
-    var grouped = await _context.Products
-        .GroupBy(p => p.Category)
-        .Select(g => new { Category = g.Key, Count = g.Count(), TotalValue = g.Sum(p => p.Price) })
-        .ToListAsync();
-
-    return Ok(grouped);
-}
+    [HttpPost]
+    public async Task<ActionResult<ProductDto>> Create(CreateProductDto dto)
+    {
+        var command = new CreateProductCommand(dto);
+        var product = await _mediator.Send(command);
+        return CreatedAtAction(nameof(GetAll), new { id = product.Id }, product);
+    }
 }
