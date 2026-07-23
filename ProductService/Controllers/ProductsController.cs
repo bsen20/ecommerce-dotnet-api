@@ -7,12 +7,15 @@ using MediatR;
 using ProductService.Dtos;
 using ProductService.Commands;
 using ProductService.Queries;
+using ProductService.Filters;
 
 namespace ProductService.Controllers;
 
 
 [ApiController]
 [Route("api/[controller]")]
+[ValidateModel]//custom filter
+[WrapResponse]
 public class ProductsController : ControllerBase
 {
     private readonly IProductRepository _repository;
