@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ProductService.Data;
 using ProductService.Models;
 using ProductService.Repositories;
 
@@ -10,10 +12,13 @@ public class ProductsController : ControllerBase
 {
     private readonly IProductRepository _repository;
 
+    private readonly AppDbContext _context;
+
     // DI: repository is injected via constructor
-    public ProductsController(IProductRepository repository)
+    public ProductsController(IProductRepository repository,AppDbContext context)
     {
         _repository = repository;
+        _context = context;
     }
 
     [HttpGet]
@@ -52,4 +57,40 @@ public class ProductsController : ControllerBase
         await _repository.DeleteAsync(id);
         return NoContent();
     }
+
+    [HttpGet("search")]
+public async Task<ActionResult<List<Product>>> Search(
+    [FromQuery] string? name,
+    [FromQuery] string? category,
+    [FromQuery] decimal? minPrice,
+    [FromQuery] decimal? maxPrice)
+{
+    var query = _context.Products.AsQueryable();
+
+    if (!string.IsNullOrEmpty(name))
+        query = query.Where(p => p.Name.ToLower().Contains(name.ToLower()));
+
+    if (!string.IsNullOrEmpty(category))
+        query = query.Where(p => p.Category == category);
+
+    if (minPrice.HasValue)
+        query = query.Where(p => p.Price >= minPrice.Value);
+
+    if (maxPrice.HasValue)
+        query = query.Where(p => p.Price <= maxPrice.Value);
+
+    var products = await query.OrderBy(p => p.Name).ToListAsync();
+    return Ok(products);
+}
+
+[HttpGet("grouped")]
+public async Task<ActionResult> GetGrouped()
+{
+    var grouped = await _context.Products
+        .GroupBy(p => p.Category)
+        .Select(g => new { Category = g.Key, Count = g.Count(), TotalValue = g.Sum(p => p.Price) })
+        .ToListAsync();
+
+    return Ok(grouped);
+}
 }
