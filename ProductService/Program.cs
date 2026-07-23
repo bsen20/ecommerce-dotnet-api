@@ -2,6 +2,7 @@ using ProductService.Repositories;
 using ProductService.Data;
 using Microsoft.EntityFrameworkCore;
 using ProductService.Filters;
+using ProductService.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
@@ -23,5 +24,7 @@ if (app.Environment.IsDevelopment())
 }
 // app.UseHttpsRedirection(); // Disabled since no HTTPS binding
 app.UseAuthorization();
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
 app.MapControllers();
 app.Run();
